@@ -70,10 +70,6 @@ def supervisor_model(messages):
     1. if the report is good or average, return a string "approved" ONLY,
     2. if the report is very bad, return a JSON schema of {"status" : "unapproved", "suggestions" : your suggestions to make it good"
     </context>
-
-    <examples>
-    1. 
-    </examples>
     """
 
     context = [{"role" : "system", "content" : sys_prompt}] + converted_messages
@@ -115,10 +111,6 @@ def researcher_model(messages, tools_schema):
     <context>
     You are a researcher, use specific search queries to initiate web search regarding the topic given. return factually claimed results from the tools available.
     </context>
-
-    <examples>
-    1.
-    </examples>
     """
     context = [{"role" : "system", "content" : sys_prompt}] + converted_messages
 
