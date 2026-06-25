@@ -1,5 +1,6 @@
 langgraph==1.2.0
 langfuse==4.9.0
 litellm==1.83.14
+mcp==1.28.0
 ragas==0.2.6
 tavily-python==0.7.26
