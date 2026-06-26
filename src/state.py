@@ -7,6 +7,6 @@ class AgentState(TypedDict):
     researcher_notes: list[dict]
     researcher_count: int
     writer_notes: dict
-    supervisor_notes: dict
+    supervisor_notes: str
     supervisor_count: int
     step_count: int 
