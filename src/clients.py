@@ -1,5 +1,7 @@
 import os
 import json
+import logging
+import sys
 
 from dotenv import load_dotenv
 from litellm import (
@@ -19,6 +21,13 @@ from langchain_core.messages import (
 )
 
 from src.config import SUPERVISOR_MODEL, RESEARCHER_MODEL, WRITER_MODEL, WRITER_MAX_TOKENS
+
+
+logging.basicConfig(
+    level = logging.INFO,
+    stream=sys.stderr
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -62,14 +71,21 @@ def convert_messages(messages_dict)-> list[dict]:
     return converted_dict
 
 def supervisor_model(messages):
-    converted_messages = convert_messages(messages=messages)
+    converted_messages = convert_messages(messages_dict=messages)
 
     sys_prompt = """
     <context>
-    You are a supervisor, Assess the written report and return specific strings.
-    1. if the report is good or average, return a string "approved" ONLY,
-    2. if the report is very bad, return a JSON schema of {"status" : "unapproved", "suggestions" : your suggestions to make it good"
+    You are a supervisor evaluating a written report produced by a writer agent.
+    The last AI message in the conversation is the report to evaluate.
+    1. Return ONLY the string "approved" if acceptable.
+    2. Return ONLY valid JSON {"status": "unapproved", "suggestions": "..."} if not.
+    3. Nothing else. No explanation. No conversation.
+    4. Be generous.
     </context>
+    <examples>
+    1. "approved"
+    2. {"status" : "unapproved", "suggestions" : "..."}
+    </examples>
     """
 
     context = [{"role" : "system", "content" : sys_prompt}] + converted_messages
@@ -105,7 +121,7 @@ def supervisor_model(messages):
             print(f"Unexpected error: {e}")
 
 def researcher_model(messages, tools_schema):
-    converted_messages = convert_messages(messages=messages)
+    converted_messages = convert_messages(messages_dict=messages)
 
     sys_prompt = """
     <context>
@@ -147,7 +163,7 @@ def researcher_model(messages, tools_schema):
             print(f"Unexpected error: {e}")
 
 def writer_model(messages):
-    converted_messages = convert_messages(messages=messages)
+    converted_messages = convert_messages(messages_dict=messages)
 
     sys_prompt = """
     <context>
