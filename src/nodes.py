@@ -1,9 +1,14 @@
+import json
+
+from dotenv import load_dotenv
 from langfuse import observe
 
 from src.state import AgentState
 from src.clients import supervisor_model, researcher_model, writer_model
 from src.config import SUPERVISOR_MAX_COUNT, RESEARCHER_MAX_COUNT
 from src.tools import get_tools_schema, run_search_tool
+
+load_dotenv()
 
 @observe(name="supervisor_node")
 def supervisor_node(state: AgentState)-> list[dict]:
@@ -12,7 +17,7 @@ def supervisor_node(state: AgentState)-> list[dict]:
     else:
         response = "please check the writer node"
 
-    return {"messages" : [response], "supervisor_notes" : response, "supervisor_count" : state["supervisor_count"] + 1, "step_count" : state["step_count"] + 1}
+    return {"messages" : [response], "supervisor_notes" : response.get("content"), "supervisor_count" : state["supervisor_count"] + 1, "step_count" : state["step_count"] + 1}
 
 @observe(name="researcher_node")
 def researcher_node(state: AgentState):
@@ -25,11 +30,10 @@ def search_tool(state: AgentState):
     tool_name = state["messages"][-1].tool_calls[0]["name"]
     tool_call_id = state["messages"][-1].tool_calls[0]["id"]
 
-    results: list[dict] = []
     if tool_name == "search_tool":
         if state["researcher_count"] <= RESEARCHER_MAX_COUNT:
             search_query = state["messages"][-1].tool_calls[0]["args"]["query"]
-            results+=run_search_tool(query=search_query)
+            results = run_search_tool(query=search_query)
 
             tool_message = {
                 "role" : "tool",
@@ -58,14 +62,19 @@ def final_node(state: AgentState):
     result = state["writer_notes"]
     return {"messages" : [result], "step_count" : state["step_count"] + 1}
 
+@observe(name="researcher_routing")
 def researcher_routing(state: AgentState):
     if state["messages"][-1].tool_calls:
         return "search_tool"
     else:
         return "writer_node"
     
+@observe(name="routing_logic")
 def routing_logic(state: AgentState):
-    if state.get("supervisor_notes") == "approved" or state["supervisor_count"] > SUPERVISOR_MAX_COUNT:
+    if state["supervisor_count"] > SUPERVISOR_MAX_COUNT:
+        return "final_node"
+    
+    if state["supervisor_notes"].lower() == "approved":
         return "final_node"
     else:
         return "writer_node"
