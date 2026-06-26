@@ -1,3 +1,6 @@
+import logging
+import sys
+
 from langgraph.graph import StateGraph, START, END 
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -11,6 +14,13 @@ from src.nodes import (
     supervisor_node,
     writer_node
 )
+
+
+logging.basicConfig(
+    level = logging.INFO,
+    stream=sys.stderr
+)
+logger = logging.getLogger(__name__)
 
 class AgentGraph:
     def __init__(self):
@@ -56,7 +66,7 @@ class AgentGraph:
                 return self.app.get_state(config=config)
 
         except Exception as e:
-            print(e)
+            logger.error(e)
 
     def get_history(self, thread_id):
         config = {
@@ -79,8 +89,9 @@ class AgentGraph:
         }
 
         self.app.invoke(None, config=config)
+        return self.app.get_state(config=config)
 
-    def modify_and_update(self, modified, thread_id):
+    def modify_and_resume(self, modified, thread_id):
         config = {
             "configurable" : {
                 "thread_id" : f"thread_{thread_id}"
@@ -89,3 +100,16 @@ class AgentGraph:
 
         self.app.update_state({"messages" : [{"role" : "assistant", "content" : modified}]}, config=config)
         self.app.invoke(None, config=config)
+
+    def get_final_response(self, thread_id):
+        config = {
+            "configurable" : {
+                "thread_id" : f"thread_{thread_id}"
+            }
+        }
+
+        snapshot = self.app.get_state(config=config)
+        if snapshot.values:
+            return snapshot.values["writer_notes"]
+        else:
+            return "No response"

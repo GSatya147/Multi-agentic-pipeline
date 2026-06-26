@@ -27,19 +27,19 @@ client_config: dict = {
     }
 }
 
-async def tool_client():
-    async with MultiServerMCPClient(client_config) as client:
-        tools = client.get_tools()
-        return tools
-
-def run_search_tool(query):
-    tools = asyncio.run(tool_client())
+async def _run_search_tool(query):
+    client = MultiServerMCPClient(client_config)
+    tools = await client.get_tools()
 
     tool = next((t for t in tools if t.name=="search_tool"), None) # A generator, evals and return the first success iter
     if tool is None:
         raise ValueError("search_tool not found on MCP server")
     
-    return tool.invoke({"query" : query})
+    return await tool.ainvoke({"query" : query})
+
+def run_search_tool(query):
+    result = asyncio.run(_run_search_tool(query=query))
+    return result
 
 def get_tools_schema():
     tools_schema: list[dict] = [SEARCH_TOOL_SCHEMA]
